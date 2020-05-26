@@ -1,0 +1,27 @@
+JFDML JFormDesigner: "7.0.1.0.272" Java: "11.0.6" encoding: "UTF-8"
+
+new FormModel {
+	contentType: "form/swing"
+	root: new FormRoot {
+		add( new FormContainer( "javax.swing.JPanel", new FormLayoutManager( class java.awt.BorderLayout ) ) {
+			name: "this"
+			"maximumSize": new java.awt.Dimension( 500, 500 )
+			add( new FormContainer( "javax.swing.JScrollPane", new FormLayoutManager( class javax.swing.JScrollPane ) ) {
+				name: "scrollPane1"
+				"horizontalScrollBarPolicy": 31
+				add( new FormComponent( "javax.swing.JTextPane" ) {
+					name: "helpTextPane"
+					"editable": false
+					auxiliary() {
+						"JavaCodeGenerator.postCreateCode": "helpTextPane.setContentType(\"text/html\");\ntry {\nURL html = getClass().getResource(\"/help.html\");\n\t\t\tList<String> asdf = Files.readAllLines(new File(html.getPath()).toPath());\n\t\t\tStringBuilder builder = new StringBuilder();\n\t\t\tasdf.forEach(builder::append);\n\t\t\thelpTextPane.setText(builder.toString());\n\t\t\t} catch (Exception e) {\n\t\t\tJOptionPane.showMessageDialog(this,\n\t\t\t\t\t\t\t\t\t\"Could not load the help text! Oof\", \"Help error\"\n\t\t\t\t\t\t\t\t\t, JOptionPane.ERROR_MESSAGE\n\t\t\t\t\t\t\t);\n\t\t\t}"
+					}
+				} )
+			}, new FormLayoutConstraints( class java.lang.String ) {
+				"value": "Center"
+			} )
+		}, new FormLayoutConstraints( null ) {
+			"location": new java.awt.Point( 0, 0 )
+			"size": new java.awt.Dimension( 500, 500 )
+		} )
+	}
+}

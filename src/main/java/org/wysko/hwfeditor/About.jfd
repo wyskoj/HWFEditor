@@ -1,0 +1,33 @@
+JFDML JFormDesigner: "7.0.1.0.272" Java: "11.0.6" encoding: "UTF-8"
+
+new FormModel {
+	contentType: "form/swing"
+	root: new FormRoot {
+		add( new FormContainer( "javax.swing.JPanel", new FormLayoutManager( class java.awt.GridLayout ) {
+			"columns": 1
+			"rows": 3
+		} ) {
+			name: "this"
+			add( new FormComponent( "javax.swing.JLabel" ) {
+				name: "label1"
+				"text": "HWFEditor"
+				"font": new java.awt.Font( "Tahoma", 0, 20 )
+				"horizontalAlignment": 0
+			} )
+			add( new FormComponent( "javax.swing.JLabel" ) {
+				name: "label2"
+				"icon": new com.jformdesigner.model.SwingIcon( 0, "/logo.png" )
+				"horizontalAlignment": 0
+			} )
+			add( new FormComponent( "javax.swing.JTextPane" ) {
+				name: "textPane1"
+				"text": "HWFEditor, and all its integral parts, are released under the GNU General Public License 3.\n\nThe GPL v3 is accessible here: http://www.gnu.org/licenses/gpl.html"
+				"editable": false
+				"font": new com.jformdesigner.model.SwingFont( "TextField.font" )
+			} )
+		}, new FormLayoutConstraints( null ) {
+			"location": new java.awt.Point( 0, 0 )
+			"size": new java.awt.Dimension( 255, 325 )
+		} )
+	}
+}

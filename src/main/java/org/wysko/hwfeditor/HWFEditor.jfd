@@ -1,0 +1,146 @@
+JFDML JFormDesigner: "7.0.1.0.272" Java: "11.0.6" encoding: "UTF-8"
+
+new FormModel {
+	contentType: "form/swing"
+	root: new FormRoot {
+		add( new FormContainer( "javax.swing.JPanel", new FormLayoutManager( class java.awt.BorderLayout ) ) {
+			name: "this"
+			add( new FormContainer( "javax.swing.JMenuBar", new FormLayoutManager( class javax.swing.JMenuBar ) ) {
+				name: "menuBar"
+				add( new FormContainer( "javax.swing.JMenu", new FormLayoutManager( class javax.swing.JMenu ) ) {
+					name: "fileMenu"
+					"text": "File"
+					add( new FormComponent( "org.wysko.hwfeditor.MenuItemResizedIcon" ) {
+						name: "openMenuItem"
+						"text": "Open..."
+						"icon": new com.jformdesigner.model.SwingIcon( 0, "/open.png" )
+						"mnemonic": 79
+						addEvent( new FormEvent( "java.awt.event.ActionListener", "actionPerformed", "openMenuItemActionPerformed", true ) )
+					} )
+					add( new FormComponent( "javax.swing.JPopupMenu$Separator" ) {
+						name: "separator2"
+					} )
+					add( new FormComponent( "org.wysko.hwfeditor.MenuItemResizedIcon" ) {
+						name: "importMenuItem"
+						"text": "Import..."
+						"icon": new com.jformdesigner.model.SwingIcon( 0, "/import.png" )
+						"enabled": false
+						"mnemonic": 73
+						addEvent( new FormEvent( "java.awt.event.ActionListener", "actionPerformed", "importMenuItemActionPerformed", true ) )
+					} )
+					add( new FormComponent( "org.wysko.hwfeditor.MenuItemResizedIcon" ) {
+						name: "exportMenuItem"
+						"text": "Export..."
+						"enabled": false
+						"icon": new com.jformdesigner.model.SwingIcon( 0, "/export.png" )
+						"mnemonic": 88
+						addEvent( new FormEvent( "java.awt.event.ActionListener", "actionPerformed", "exportMenuItemActionPerformed", true ) )
+					} )
+					add( new FormComponent( "javax.swing.JPopupMenu$Separator" ) {
+						name: "separator3"
+					} )
+					add( new FormComponent( "org.wysko.hwfeditor.MenuItemResizedIcon" ) {
+						name: "saveMenuItem"
+						"text": "Save"
+						"icon": new com.jformdesigner.model.SwingIcon( 0, "/save.png" )
+						"enabled": false
+						"mnemonic": 83
+						addEvent( new FormEvent( "java.awt.event.ActionListener", "actionPerformed", "saveMenuItemActionPerformed", true ) )
+					} )
+					add( new FormComponent( "org.wysko.hwfeditor.MenuItemResizedIcon" ) {
+						name: "saveAsMenuItem"
+						"text": "Save as..."
+						"icon": new com.jformdesigner.model.SwingIcon( 0, "/saveas.png" )
+						"enabled": false
+						"mnemonic": 83
+						addEvent( new FormEvent( "java.awt.event.ActionListener", "actionPerformed", "saveAsMenuItemActionPerformed", true ) )
+					} )
+					add( new FormComponent( "org.wysko.hwfeditor.MenuItemResizedIcon" ) {
+						name: "closeMenuITem"
+						"text": "Close"
+						"icon": new com.jformdesigner.model.SwingIcon( 0, "/close.png" )
+						"enabled": false
+						"mnemonic": 67
+						addEvent( new FormEvent( "java.awt.event.ActionListener", "actionPerformed", "closeMenuITemActionPerformed", true ) )
+					} )
+					add( new FormComponent( "javax.swing.JPopupMenu$Separator" ) {
+						name: "separator1"
+					} )
+					add( new FormComponent( "org.wysko.hwfeditor.MenuItemResizedIcon" ) {
+						name: "exitMenuItem"
+						"text": "Exit"
+						"icon": new com.jformdesigner.model.SwingIcon( 0, "/exit.png" )
+						"mnemonic": 69
+						addEvent( new FormEvent( "java.awt.event.ActionListener", "actionPerformed", "exitMenuItemActionPerformed", true ) )
+					} )
+				} )
+				add( new FormContainer( "javax.swing.JMenu", new FormLayoutManager( class javax.swing.JMenu ) ) {
+					name: "helpMenu"
+					"text": "Help"
+					add( new FormComponent( "org.wysko.hwfeditor.MenuItemResizedIcon" ) {
+						name: "helpMenuItem"
+						"text": "Help"
+						"icon": new com.jformdesigner.model.SwingIcon( 0, "/help.png" )
+						addEvent( new FormEvent( "java.awt.event.ActionListener", "actionPerformed", "helpMenuItemActionPerformed", true ) )
+					} )
+					add( new FormComponent( "org.wysko.hwfeditor.MenuItemResizedIcon" ) {
+						name: "aboutMenuItem"
+						"text": "About"
+						"icon": new com.jformdesigner.model.SwingIcon( 0, "/about.png" )
+						addEvent( new FormEvent( "java.awt.event.ActionListener", "actionPerformed", "aboutMenuItemActionPerformed", true ) )
+					} )
+				} )
+			}, new FormLayoutConstraints( class java.lang.String ) {
+				"value": "North"
+			} )
+			add( new FormContainer( "javax.swing.JTabbedPane", new FormLayoutManager( class javax.swing.JTabbedPane ) ) {
+				name: "tabbedPane1"
+				add( new FormContainer( "javax.swing.JPanel", new FormLayoutManager( class java.awt.BorderLayout ) ) {
+					name: "texturesPanel"
+					add( new FormComponent( "javax.swing.JLabel" ) {
+						name: "noFileLabel"
+						"text": "No file loaded."
+						"horizontalAlignment": 0
+					}, new FormLayoutConstraints( class java.lang.String ) {
+						"value": "North"
+					} )
+					add( new FormContainer( "javax.swing.JScrollPane", new FormLayoutManager( class javax.swing.JScrollPane ) ) {
+						name: "scrollPane1"
+						add( new FormComponent( "javax.swing.JTable" ) {
+							name: "texturesTable"
+						} )
+					}, new FormLayoutConstraints( class java.lang.String ) {
+						"value": "Center"
+					} )
+				}, new FormLayoutConstraints( null ) {
+					"title": "Textures"
+				} )
+				add( new FormContainer( "javax.swing.JPanel", new FormLayoutManager( class java.awt.BorderLayout ) ) {
+					name: "panel2"
+					add( new FormComponent( "javax.swing.JLabel" ) {
+						name: "noFileLabel2"
+						"text": "No file loaded."
+						"horizontalAlignment": 0
+					}, new FormLayoutConstraints( class java.lang.String ) {
+						"value": "North"
+					} )
+					add( new FormContainer( "javax.swing.JScrollPane", new FormLayoutManager( class javax.swing.JScrollPane ) ) {
+						name: "scrollPane2"
+						add( new FormComponent( "javax.swing.JTable" ) {
+							name: "modelsTable"
+						} )
+					}, new FormLayoutConstraints( class java.lang.String ) {
+						"value": "Center"
+					} )
+				}, new FormLayoutConstraints( null ) {
+					"title": "Models"
+				} )
+			}, new FormLayoutConstraints( class java.lang.String ) {
+				"value": "Center"
+			} )
+		}, new FormLayoutConstraints( null ) {
+			"location": new java.awt.Point( 0, 0 )
+			"size": new java.awt.Dimension( 475, 480 )
+		} )
+	}
+}
