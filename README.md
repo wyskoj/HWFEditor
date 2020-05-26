@@ -12,6 +12,6 @@ The easiest way to edit assets is to export them all to a dedicated folder, edit
 * Click File | Save to overwrite the HWF file.
 
 ## About
-Find a bug? [Submit an issue](https://github.com/wyskoj/HWFEditor/issues/new).
+Find a bug? Need a feature? [Submit an issue](https://github.com/wyskoj/HWFEditor/issues/new).
 
 HWFEditor, and all its integral parts, are released under the GNU General Public License 3. The GPL v3 is accessible here: http://www.gnu.org/licenses/gpl.html. The source code is available here: https://github.com/wyskoj/HWFEditor.
