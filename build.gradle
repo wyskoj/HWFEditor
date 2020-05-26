@@ -3,7 +3,7 @@ plugins {
 }
 
 group 'org.wysko'
-version '1.0-SNAPSHOT'
+version '1.0'
 
 repositories {
     mavenCentral()
@@ -19,5 +19,8 @@ dependencies {
 jar {
     manifest {
         attributes 'Main-Class': 'org.wysko.hwfeditor.HWFEditor'
+    }
+    from {
+        configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
     }
 }

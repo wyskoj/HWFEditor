@@ -6,6 +6,7 @@ package org.wysko.hwfeditor;
 
 
 import com.formdev.flatlaf.FlatDarculaLaf;
+import com.formdev.flatlaf.FlatIntelliJLaf;
 
 import javax.imageio.ImageIO;
 import javax.swing.*;
@@ -486,6 +487,7 @@ public class HWFEditor extends JPanel {
 		dialog.setTitle("About HWFEditor");
 		dialog.setContentPane(new About());
 		dialog.setSize(255, 400);
+		dialog.setResizable(false);
 		dialog.setLocationRelativeTo(null);
 		dialog.setVisible(true);
 	}
