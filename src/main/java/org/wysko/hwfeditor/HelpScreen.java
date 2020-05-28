@@ -4,11 +4,15 @@
 
 package org.wysko.hwfeditor;
 
+import com.google.common.base.Charsets;
+import com.google.common.io.Resources;
+
 import javax.swing.*;
 import java.awt.*;
 import java.io.File;
 import java.net.URL;
 import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.List;
 
 /**
@@ -23,19 +27,18 @@ public class HelpScreen extends JPanel {
 		// JFormDesigner - Component initialization - DO NOT MODIFY  //GEN-BEGIN:initComponents
 		scrollPane1 = new JScrollPane();
 		helpTextPane = new JTextPane();
-		helpTextPane.setContentType("text/html");
 		try {
-		URL html = getClass().getResource("/help.html");
-					List<String> asdf = Files.readAllLines(new File(html.getPath()).toPath());
-					StringBuilder builder = new StringBuilder();
-					asdf.forEach(builder::append);
-					helpTextPane.setText(builder.toString());
-					} catch (Exception e) {
-					JOptionPane.showMessageDialog(this,
-											"Could not load the help text! Oof", "Help error"
+		URL url = Resources.getResource("help.html");
+		String text = Resources.toString(url, Charsets.UTF_8);
+		helpTextPane.setContentType("text/html");
+		helpTextPane.setText(text);
+		} catch (Exception e12) {
+		e12.printStackTrace();
+		JOptionPane.showMessageDialog(this,
+											"Could not load the help text!", "Error"
 											, JOptionPane.ERROR_MESSAGE
 									);
-					}
+		}
 
 		//======== this ========
 		setMaximumSize(new Dimension(500, 500));
@@ -44,6 +47,7 @@ public class HelpScreen extends JPanel {
 		//======== scrollPane1 ========
 		{
 			scrollPane1.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+			scrollPane1.getVerticalScrollBar().setValue(0);
 
 			//---- helpTextPane ----
 			helpTextPane.setEditable(false);

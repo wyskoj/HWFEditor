@@ -10,7 +10,7 @@ new FormModel {
 			name: "this"
 			add( new FormComponent( "javax.swing.JLabel" ) {
 				name: "label1"
-				"text": "HWFEditor"
+				"text": "HWFEditor v1.1"
 				"font": new java.awt.Font( "Tahoma", 0, 20 )
 				"horizontalAlignment": 0
 			} )

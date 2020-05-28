@@ -524,17 +524,17 @@ public class HWFEditor extends JPanel {
 		noFileLabel2 = new JLabel();
 		scrollPane2 = new JScrollPane();
 		modelsTable = new JTable();
-		
+
 		//======== this ========
 		setLayout(new BorderLayout());
-		
+
 		//======== menuBar ========
 		{
-			
+
 			//======== fileMenu ========
 			{
 				fileMenu.setText("File");
-				
+
 				//---- openMenuItem ----
 				openMenuItem.setText("Open...");
 				openMenuItem.setIcon(new ImageIcon(getClass().getResource("/open.png")));
@@ -542,7 +542,7 @@ public class HWFEditor extends JPanel {
 				openMenuItem.addActionListener(e -> openMenuItemActionPerformed(e));
 				fileMenu.add(openMenuItem);
 				fileMenu.addSeparator();
-				
+
 				//---- importMenuItem ----
 				importMenuItem.setText("Import...");
 				importMenuItem.setIcon(new ImageIcon(getClass().getResource("/import.png")));
@@ -550,7 +550,7 @@ public class HWFEditor extends JPanel {
 				importMenuItem.setMnemonic('I');
 				importMenuItem.addActionListener(e -> importMenuItemActionPerformed(e));
 				fileMenu.add(importMenuItem);
-				
+
 				//---- exportMenuItem ----
 				exportMenuItem.setText("Export...");
 				exportMenuItem.setEnabled(false);
@@ -559,7 +559,7 @@ public class HWFEditor extends JPanel {
 				exportMenuItem.addActionListener(e -> exportMenuItemActionPerformed(e));
 				fileMenu.add(exportMenuItem);
 				fileMenu.addSeparator();
-				
+
 				//---- saveMenuItem ----
 				saveMenuItem.setText("Save");
 				saveMenuItem.setIcon(new ImageIcon(getClass().getResource("/save.png")));
@@ -567,7 +567,7 @@ public class HWFEditor extends JPanel {
 				saveMenuItem.setMnemonic('S');
 				saveMenuItem.addActionListener(e -> saveMenuItemActionPerformed(e));
 				fileMenu.add(saveMenuItem);
-				
+
 				//---- saveAsMenuItem ----
 				saveAsMenuItem.setText("Save as...");
 				saveAsMenuItem.setIcon(new ImageIcon(getClass().getResource("/saveas.png")));
@@ -575,7 +575,7 @@ public class HWFEditor extends JPanel {
 				saveAsMenuItem.setMnemonic('S');
 				saveAsMenuItem.addActionListener(e -> saveAsMenuItemActionPerformed(e));
 				fileMenu.add(saveAsMenuItem);
-				
+
 				//---- closeMenuITem ----
 				closeMenuITem.setText("Close");
 				closeMenuITem.setIcon(new ImageIcon(getClass().getResource("/close.png")));
@@ -584,7 +584,7 @@ public class HWFEditor extends JPanel {
 				closeMenuITem.addActionListener(e -> closeMenuITemActionPerformed(e));
 				fileMenu.add(closeMenuITem);
 				fileMenu.addSeparator();
-				
+
 				//---- exitMenuItem ----
 				exitMenuItem.setText("Exit");
 				exitMenuItem.setIcon(new ImageIcon(getClass().getResource("/exit.png")));
@@ -593,17 +593,17 @@ public class HWFEditor extends JPanel {
 				fileMenu.add(exitMenuItem);
 			}
 			menuBar.add(fileMenu);
-			
+
 			//======== helpMenu ========
 			{
 				helpMenu.setText("Help");
-				
+
 				//---- helpMenuItem ----
 				helpMenuItem.setText("Help");
 				helpMenuItem.setIcon(new ImageIcon(getClass().getResource("/help.png")));
 				helpMenuItem.addActionListener(e -> helpMenuItemActionPerformed(e));
 				helpMenu.add(helpMenuItem);
-				
+
 				//---- aboutMenuItem ----
 				aboutMenuItem.setText("About");
 				aboutMenuItem.setIcon(new ImageIcon(getClass().getResource("/about.png")));
@@ -613,19 +613,19 @@ public class HWFEditor extends JPanel {
 			menuBar.add(helpMenu);
 		}
 		add(menuBar, BorderLayout.NORTH);
-		
+
 		//======== tabbedPane1 ========
 		{
-			
+
 			//======== texturesPanel ========
 			{
 				texturesPanel.setLayout(new BorderLayout());
-				
+
 				//---- noFileLabel ----
 				noFileLabel.setText("No file loaded.");
 				noFileLabel.setHorizontalAlignment(SwingConstants.CENTER);
 				texturesPanel.add(noFileLabel, BorderLayout.NORTH);
-				
+
 				//======== scrollPane1 ========
 				{
 					scrollPane1.setViewportView(texturesTable);
@@ -633,16 +633,16 @@ public class HWFEditor extends JPanel {
 				texturesPanel.add(scrollPane1, BorderLayout.CENTER);
 			}
 			tabbedPane1.addTab("Textures", texturesPanel);
-			
+
 			//======== panel2 ========
 			{
 				panel2.setLayout(new BorderLayout());
-				
+
 				//---- noFileLabel2 ----
 				noFileLabel2.setText("No file loaded.");
 				noFileLabel2.setHorizontalAlignment(SwingConstants.CENTER);
 				panel2.add(noFileLabel2, BorderLayout.NORTH);
-				
+
 				//======== scrollPane2 ========
 				{
 					scrollPane2.setViewportView(modelsTable);

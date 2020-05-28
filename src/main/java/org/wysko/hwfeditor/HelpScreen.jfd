@@ -9,11 +9,14 @@ new FormModel {
 			add( new FormContainer( "javax.swing.JScrollPane", new FormLayoutManager( class javax.swing.JScrollPane ) ) {
 				name: "scrollPane1"
 				"horizontalScrollBarPolicy": 31
+				auxiliary() {
+					"JavaCodeGenerator.postInitCode": "scrollPane1.getVerticalScrollBar().setValue(0);"
+				}
 				add( new FormComponent( "javax.swing.JTextPane" ) {
 					name: "helpTextPane"
 					"editable": false
 					auxiliary() {
-						"JavaCodeGenerator.postCreateCode": "helpTextPane.setContentType(\"text/html\");\ntry {\nURL html = getClass().getResource(\"/help.html\");\n\t\t\tList<String> asdf = Files.readAllLines(new File(html.getPath()).toPath());\n\t\t\tStringBuilder builder = new StringBuilder();\n\t\t\tasdf.forEach(builder::append);\n\t\t\thelpTextPane.setText(builder.toString());\n\t\t\t} catch (Exception e) {\n\t\t\tJOptionPane.showMessageDialog(this,\n\t\t\t\t\t\t\t\t\t\"Could not load the help text! Oof\", \"Help error\"\n\t\t\t\t\t\t\t\t\t, JOptionPane.ERROR_MESSAGE\n\t\t\t\t\t\t\t);\n\t\t\t}"
+						"JavaCodeGenerator.postCreateCode": "try {\nURL url = Resources.getResource(\"help.html\");\nString text = Resources.toString(url, Charsets.UTF_8);\nhelpTextPane.setContentType(\"text/html\");\nhelpTextPane.setText(text);\n} catch (Exception e12) {\ne12.printStackTrace();\nJOptionPane.showMessageDialog(this,\n\t\t\t\t\t\t\t\t\t\"Could not load the help text!\", \"Error\"\n\t\t\t\t\t\t\t\t\t, JOptionPane.ERROR_MESSAGE\n\t\t\t\t\t\t\t);\n}"
 					}
 				} )
 			}, new FormLayoutConstraints( class java.lang.String ) {
