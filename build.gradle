@@ -15,6 +15,9 @@ dependencies {
     compile group: 'org.apache.commons', name: 'commons-lang3', version: '3.10'
     implementation 'com.formdev:flatlaf:0.35'
     implementation("com.google.guava:guava:29.0-jre")
+    // https://mvnrepository.com/artifact/org.apache.commons/commons-lang3
+    compile group: 'org.apache.commons', name: 'commons-lang3', version: '3.10'
+
 }
 
 jar {

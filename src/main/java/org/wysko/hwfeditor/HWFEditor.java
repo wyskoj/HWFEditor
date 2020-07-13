@@ -4,9 +4,8 @@
 
 package org.wysko.hwfeditor;
 
-
 import com.formdev.flatlaf.FlatDarculaLaf;
-import com.formdev.flatlaf.FlatIntelliJLaf;
+import org.apache.commons.lang3.ArrayUtils;
 
 import javax.imageio.ImageIO;
 import javax.swing.*;
@@ -24,13 +23,8 @@ import java.nio.ByteOrder;
 import java.nio.file.Files;
 import java.util.*;
 
-/*
- * Created by JFormDesigner on Mon May 18 23:39:32 EDT 2020
- */
-
-
 /**
- * @author unknown
+ * @author Jacob Wysko
  */
 public class HWFEditor extends JPanel {
 	
@@ -45,56 +39,52 @@ public class HWFEditor extends JPanel {
 			Files.write(currentHWFFile.toPath(), buildHWFFile(assets));
 			changeAndHaventSaved = false;
 		} catch (Exception exception) {
-			frame.setCursor(new Cursor(Cursor.DEFAULT_CURSOR));
 			JOptionPane.showMessageDialog(frame, new JScrollPane(new JTextArea("There was an error saving.\n\n" + exception.toString())), "Save error", JOptionPane.ERROR_MESSAGE);
+		} finally {
+			frame.setCursor(new Cursor(Cursor.DEFAULT_CURSOR));
 		}
-		frame.setCursor(new Cursor(Cursor.DEFAULT_CURSOR));
 	}
 	
+	/**
+	 * Builds an HWF file based off of a 2D array of assets by bytes.
+	 *
+	 * @param modelsAndTextures the assets
+	 * @return the bytes of the generated HWF file
+	 */
 	static byte[] buildHWFFile(byte[][] modelsAndTextures) {
-		ArrayList<Byte> buildingBytes = new ArrayList<>();
+		byte[] out = new byte[0];
 		
-		for (byte[] modelOrTexture : modelsAndTextures)
-			for (byte aByte : modelOrTexture) buildingBytes.add(aByte);
+		// Add each model and texture
+		for (byte[] modelOrTexture : modelsAndTextures) {
+			out = ArrayUtils.addAll(out, modelOrTexture);
+		}
 		
-		for (int i = 0; i < MIDIJam.FILENAMES_IDS.entrySet().size(); i++) {
+		for (int i = 0; i < MIDIJam.FILENAMES_IDS.entrySet().size(); i++) { // For each file name
+			// Add file name
 			String filename = MIDIJam.FILENAMES_IDS.get(i);
-			for (int j = 0; j < filename.length(); j++) {
-				buildingBytes.add((byte) filename.charAt(j));
-			}
-			buildingBytes.add((byte) 0x0);
+			out = ArrayUtils.addAll(out, filename.getBytes());
+			out = ArrayUtils.add(out, (byte) 0x0);
+			
+			// Add buffer
 			for (int j = 0; j < 260 - (filename.length() + 1); j++) {
-				buildingBytes.add((byte) 0x0);
+				out = ArrayUtils.add(out, (byte) 0x0);
 			}
+			
+			// Add file size
 			byte[] fileLengthAsArray = ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putInt(modelsAndTextures[i].length).array();
-			for (int j = 0; j < 4; j++) {
-				buildingBytes.add(fileLengthAsArray[j]);
-			}
+			out = ArrayUtils.addAll(out, fileLengthAsArray);
 		}
-		buildingBytes.add((byte) 0x88);
-		buildingBytes.add((byte) 0x01);
-		buildingBytes.add((byte) 0x00);
-		buildingBytes.add((byte) 0x00);
+		out = ArrayUtils.addAll(out, new byte[] {(byte) 0x88, 0x1, 0x0, 0x0});
 		
-		byte[] finalArray = new byte[buildingBytes.size()];
-		for (int i = 0; i < buildingBytes.size(); i++) {
-			finalArray[i] = buildingBytes.get(i);
-		}
-		return finalArray;
+		return out;
 	}
 	
-	public static void main(String[] args) throws IOException {
+	public static void main(String... args) throws IOException {
 		FlatDarculaLaf.install();
-//		try {
-//			UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
-//		} catch (ClassNotFoundException | UnsupportedLookAndFeelException | IllegalAccessException | InstantiationException e) {
-//			e.printStackTrace();
-//		}
 		HWFEditor editor = new HWFEditor();
 		editor.initComponents();
 		final InputStream logo = editor.getClass().getResourceAsStream("/logo.png");
 		frame.setIconImage(ImageIO.read(logo));
-		
 		frame.setContentPane(editor);
 		frame.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
 		Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
@@ -133,8 +123,24 @@ public class HWFEditor extends JPanel {
 		public IllformattedHWFFile() {
 			super();
 		}
+		public IllformattedHWFFile(String message, long pos) {
+			super(message + " at position " + pos + ".");
+		}
 	}
 	
+	public void betterParseHWF(File HWF) throws IOException {
+		RandomAccessFile file = new RandomAccessFile(HWF,"r");
+		long size = file.length();
+		file.seek(size - 1);
+		System.out.println(file.read());
+		// STOPSHIP: 7/13/2020
+	}
+	
+	/**
+	 * @deprecated superseded by {@code betterParseHWF}
+	 * @param hwf the file to parse
+	 * @throws IOException if an error occurs
+	 */
 	private void parseHWF(File hwf) throws IOException {
 		byte[] bytes;
 		bytes = Files.readAllBytes(hwf.toPath());
@@ -198,7 +204,7 @@ public class HWFEditor extends JPanel {
 		}
 		currentHWFFile = file;
 		try {
-			parseHWF(file);
+			betterParseHWF(file);
 		} catch (Exception exception) {
 			JOptionPane.showMessageDialog(frame, new JScrollPane(new JTextArea("There was an error parsing the HWF file.\n\n" + exception.toString())), "HWF Parse error", JOptionPane.ERROR_MESSAGE);
 			frame.setCursor(new Cursor(Cursor.DEFAULT_CURSOR));
@@ -524,17 +530,17 @@ public class HWFEditor extends JPanel {
 		noFileLabel2 = new JLabel();
 		scrollPane2 = new JScrollPane();
 		modelsTable = new JTable();
-
+		
 		//======== this ========
 		setLayout(new BorderLayout());
-
+		
 		//======== menuBar ========
 		{
-
+			
 			//======== fileMenu ========
 			{
 				fileMenu.setText("File");
-
+				
 				//---- openMenuItem ----
 				openMenuItem.setText("Open...");
 				openMenuItem.setIcon(new ImageIcon(getClass().getResource("/open.png")));
@@ -542,7 +548,7 @@ public class HWFEditor extends JPanel {
 				openMenuItem.addActionListener(e -> openMenuItemActionPerformed(e));
 				fileMenu.add(openMenuItem);
 				fileMenu.addSeparator();
-
+				
 				//---- importMenuItem ----
 				importMenuItem.setText("Import...");
 				importMenuItem.setIcon(new ImageIcon(getClass().getResource("/import.png")));
@@ -550,7 +556,7 @@ public class HWFEditor extends JPanel {
 				importMenuItem.setMnemonic('I');
 				importMenuItem.addActionListener(e -> importMenuItemActionPerformed(e));
 				fileMenu.add(importMenuItem);
-
+				
 				//---- exportMenuItem ----
 				exportMenuItem.setText("Export...");
 				exportMenuItem.setEnabled(false);
@@ -559,7 +565,7 @@ public class HWFEditor extends JPanel {
 				exportMenuItem.addActionListener(e -> exportMenuItemActionPerformed(e));
 				fileMenu.add(exportMenuItem);
 				fileMenu.addSeparator();
-
+				
 				//---- saveMenuItem ----
 				saveMenuItem.setText("Save");
 				saveMenuItem.setIcon(new ImageIcon(getClass().getResource("/save.png")));
@@ -567,7 +573,7 @@ public class HWFEditor extends JPanel {
 				saveMenuItem.setMnemonic('S');
 				saveMenuItem.addActionListener(e -> saveMenuItemActionPerformed(e));
 				fileMenu.add(saveMenuItem);
-
+				
 				//---- saveAsMenuItem ----
 				saveAsMenuItem.setText("Save as...");
 				saveAsMenuItem.setIcon(new ImageIcon(getClass().getResource("/saveas.png")));
@@ -575,7 +581,7 @@ public class HWFEditor extends JPanel {
 				saveAsMenuItem.setMnemonic('S');
 				saveAsMenuItem.addActionListener(e -> saveAsMenuItemActionPerformed(e));
 				fileMenu.add(saveAsMenuItem);
-
+				
 				//---- closeMenuITem ----
 				closeMenuITem.setText("Close");
 				closeMenuITem.setIcon(new ImageIcon(getClass().getResource("/close.png")));
@@ -584,7 +590,7 @@ public class HWFEditor extends JPanel {
 				closeMenuITem.addActionListener(e -> closeMenuITemActionPerformed(e));
 				fileMenu.add(closeMenuITem);
 				fileMenu.addSeparator();
-
+				
 				//---- exitMenuItem ----
 				exitMenuItem.setText("Exit");
 				exitMenuItem.setIcon(new ImageIcon(getClass().getResource("/exit.png")));
@@ -593,17 +599,17 @@ public class HWFEditor extends JPanel {
 				fileMenu.add(exitMenuItem);
 			}
 			menuBar.add(fileMenu);
-
+			
 			//======== helpMenu ========
 			{
 				helpMenu.setText("Help");
-
+				
 				//---- helpMenuItem ----
 				helpMenuItem.setText("Help");
 				helpMenuItem.setIcon(new ImageIcon(getClass().getResource("/help.png")));
 				helpMenuItem.addActionListener(e -> helpMenuItemActionPerformed(e));
 				helpMenu.add(helpMenuItem);
-
+				
 				//---- aboutMenuItem ----
 				aboutMenuItem.setText("About");
 				aboutMenuItem.setIcon(new ImageIcon(getClass().getResource("/about.png")));
@@ -613,19 +619,19 @@ public class HWFEditor extends JPanel {
 			menuBar.add(helpMenu);
 		}
 		add(menuBar, BorderLayout.NORTH);
-
+		
 		//======== tabbedPane1 ========
 		{
-
+			
 			//======== texturesPanel ========
 			{
 				texturesPanel.setLayout(new BorderLayout());
-
+				
 				//---- noFileLabel ----
 				noFileLabel.setText("No file loaded.");
 				noFileLabel.setHorizontalAlignment(SwingConstants.CENTER);
 				texturesPanel.add(noFileLabel, BorderLayout.NORTH);
-
+				
 				//======== scrollPane1 ========
 				{
 					scrollPane1.setViewportView(texturesTable);
@@ -633,16 +639,16 @@ public class HWFEditor extends JPanel {
 				texturesPanel.add(scrollPane1, BorderLayout.CENTER);
 			}
 			tabbedPane1.addTab("Textures", texturesPanel);
-
+			
 			//======== panel2 ========
 			{
 				panel2.setLayout(new BorderLayout());
-
+				
 				//---- noFileLabel2 ----
 				noFileLabel2.setText("No file loaded.");
 				noFileLabel2.setHorizontalAlignment(SwingConstants.CENTER);
 				panel2.add(noFileLabel2, BorderLayout.NORTH);
-
+				
 				//======== scrollPane2 ========
 				{
 					scrollPane2.setViewportView(modelsTable);
