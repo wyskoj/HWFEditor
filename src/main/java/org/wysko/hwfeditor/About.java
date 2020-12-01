@@ -29,10 +29,11 @@ public class About extends JPanel {
 		textPane1 = new JTextPane();
 
 		//======== this ========
+		
 		setLayout(new GridLayout(3, 1));
 
 		//---- label1 ----
-		label1.setText("HWFEditor v1.1");
+		label1.setText("HWFEditor v1.1.1");
 		label1.setFont(new Font("Tahoma", Font.PLAIN, 20));
 		label1.setHorizontalAlignment(SwingConstants.CENTER);
 		add(label1);

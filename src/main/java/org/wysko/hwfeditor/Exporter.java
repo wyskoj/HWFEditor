@@ -4,8 +4,6 @@
 
 package org.wysko.hwfeditor;
 
-import org.apache.commons.lang3.exception.ExceptionUtils;
-
 import javax.swing.*;
 import java.awt.*;
 import java.io.File;
@@ -15,6 +13,7 @@ import java.nio.file.StandardOpenOption;
 /*
  * Created by JFormDesigner on Tue May 19 15:48:13 EDT 2020
  */
+
 
 
 /**
@@ -47,7 +46,7 @@ public class Exporter extends JPanel {
 				int[] indices = exportList.getSelectedIndices();
 				for (int index : indices) {
 					count++;
-					Files.write(new File(chooser.getSelectedFile().getAbsolutePath() + "/" + MIDIJam.FILENAMES_IDS.get(index)).toPath(), HWFEditor.assets[index], StandardOpenOption.CREATE);
+					Files.write(new File(chooser.getSelectedFile().getAbsolutePath() + "/" + MIDIJam.FILENAMES_IDS.get(index)).toPath(), HWFEditor.editor.assets[index], StandardOpenOption.CREATE);
 				}
 			}
 			

@@ -5,7 +5,9 @@
 package org.wysko.hwfeditor;
 
 import com.formdev.flatlaf.FlatDarculaLaf;
-import org.apache.commons.lang3.ArrayUtils;
+import com.formdev.flatlaf.FlatIntelliJLaf;
+import org.apache.commons.io.output.CountingOutputStream;
+import org.wysko.util.WinRegistry;
 
 import javax.imageio.ImageIO;
 import javax.swing.*;
@@ -21,72 +23,162 @@ import java.io.*;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.file.Files;
+import java.text.DecimalFormat;
 import java.util.*;
+import java.util.logging.ConsoleHandler;
+import java.util.logging.Handler;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
+ * Edits HWF files from MIDIJam.
+ *
  * @author Jacob Wysko
+ * @version v1.1.1
  */
 public class HWFEditor extends JPanel {
 	
-	static File currentHWFFile = null;
-	static byte[][] assets;
-	static boolean changeAndHaventSaved = false;
 	static final JFrame frame = new JFrame("HWFEditor");
 	
-	private static void writeHWF() {
-		frame.setCursor(new Cursor(Cursor.WAIT_CURSOR));
-		try {
-			Files.write(currentHWFFile.toPath(), buildHWFFile(assets));
-			changeAndHaventSaved = false;
-		} catch (Exception exception) {
-			JOptionPane.showMessageDialog(frame, new JScrollPane(new JTextArea("There was an error saving.\n\n" + exception.toString())), "Save error", JOptionPane.ERROR_MESSAGE);
-		} finally {
-			frame.setCursor(new Cursor(Cursor.DEFAULT_CURSOR));
+	static final FileFilter HWFFileFilter = new FileFilter() {
+		@Override
+		public boolean accept(File f) {
+			if (f.isDirectory()) return true;
+			else
+				return f.getName().toLowerCase().endsWith("hwf");
 		}
+		
+		@Override
+		public String getDescription() {
+			return "HWF Asset Files (*.hwf)";
+		}
+	};
+	
+	static final JDialog exportDialog = new JDialog(frame, true);
+	
+	static final private Logger log = Logger.getLogger("org.wysko.hwfeditor");
+	
+	static HWFEditor editor;
+	
+	static {
+		Handler handlerObj = new ConsoleHandler();
+		handlerObj.setLevel(Level.ALL);
+		log.addHandler(handlerObj);
+		log.setLevel(Level.ALL);
+		log.setUseParentHandlers(false);
 	}
+	
+	public File currentHWFFile = null;
+	public byte[][] assets;
+	boolean unsavedChanges = false;
+	
 	
 	/**
-	 * Builds an HWF file based off of a 2D array of assets by bytes.
+	 * Efficiently writes the bytes of the assets to the specified file.
 	 *
 	 * @param modelsAndTextures the assets
-	 * @return the bytes of the generated HWF file
+	 * @param file              the file to write to
+	 * @throws IOException something went wrong
 	 */
-	static byte[] buildHWFFile(byte[][] modelsAndTextures) {
-		byte[] out = new byte[0];
+	static void writeHWFToFile(byte[][] modelsAndTextures, File file) throws IOException {
+		log.fine(String.format("Starting HWF save. File destination: %s", file.getAbsolutePath()));
 		
-		// Add each model and texture
+		CountingOutputStream outstream = new CountingOutputStream(new FileOutputStream(file));
+		
+		log.finer("Writing models and textures.");
+		
 		for (byte[] modelOrTexture : modelsAndTextures) {
-			out = ArrayUtils.addAll(out, modelOrTexture);
+			outstream.write(modelOrTexture);
 		}
 		
-		for (int i = 0; i < MIDIJam.FILENAMES_IDS.entrySet().size(); i++) { // For each file name
-			// Add file name
+		log.finer("Writing size dictionary.");
+		
+		/* Write size dictionary */
+		for (int i = 0; i < MIDIJam.FILENAMES_IDS.entrySet().size(); i++) {
 			String filename = MIDIJam.FILENAMES_IDS.get(i);
-			out = ArrayUtils.addAll(out, filename.getBytes());
-			out = ArrayUtils.add(out, (byte) 0x0);
-			
-			// Add buffer
-			for (int j = 0; j < 260 - (filename.length() + 1); j++) {
-				out = ArrayUtils.add(out, (byte) 0x0);
+			for (int j = 0; j < filename.length(); j++) {
+				outstream.write((byte) filename.charAt(j));
 			}
-			
-			// Add file size
+			outstream.write((byte) 0x0);
+			for (int j = 0; j < 260 - (filename.length() + 1); j++) {
+				outstream.write((byte) 0x0);
+			}
 			byte[] fileLengthAsArray = ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putInt(modelsAndTextures[i].length).array();
-			out = ArrayUtils.addAll(out, fileLengthAsArray);
+			for (int j = 0; j < 4; j++) {
+				outstream.write(fileLengthAsArray[j]);
+			}
 		}
-		out = ArrayUtils.addAll(out, new byte[] {(byte) 0x88, 0x1, 0x0, 0x0});
 		
-		return out;
+		/* EOF */
+		outstream.write((byte) 0x88);
+		outstream.write((byte) 0x01);
+		outstream.write((byte) 0x00);
+		outstream.write((byte) 0x00);
+		
+		outstream.close();
+		
+		log.info(String.format("Saved %d bytes.", outstream.getByteCount()));
 	}
 	
-	public static void main(String... args) throws IOException {
-		FlatDarculaLaf.install();
-		HWFEditor editor = new HWFEditor();
+	enum Theme {
+		DARK("Dark"), LIGHT("Light");
+		public String s;
+		
+		Theme(String s) {
+			this.s = s;
+		}
+		
+		@Override
+		public String toString() {
+			return s;
+		}
+	}
+	
+	public static Theme getThemeFromRegistry() {
+		String themeString = null;
+		try {
+			themeString = WinRegistry.readString(WinRegistry.HKEY_CURRENT_USER, "Software\\Wysko\\HWFEditor",
+					"Theme").toUpperCase();
+		} catch (Exception e) {
+			return Theme.DARK;
+		}
+		if (themeString == null) return Theme.DARK;
+		Theme theme = Theme.DARK;
+		try {
+			theme = Theme.valueOf(themeString);
+		} catch (IllegalArgumentException ignored) {
+		}
+		return theme;
+	}
+	
+	public static void setThemeInRegistry(Theme theme) {
+		try {
+			WinRegistry.createKey(WinRegistry.HKEY_CURRENT_USER, "Software\\Wysko\\HWFEditor");
+			WinRegistry.writeStringValue(WinRegistry.HKEY_CURRENT_USER, "Software\\Wysko\\HWFEditor", "Theme", theme.toString());
+		} catch (Exception e) {
+			JOptionPane.showMessageDialog(frame, "Welp. That didn't work. Oh well. You can live with this theme.",
+					"Error", JOptionPane.INFORMATION_MESSAGE);
+		}
+	}
+	
+	public static void main(String... args) throws IOException, IllegalAccessException {
+		
+		Theme theme = getThemeFromRegistry();
+		if (theme == null) {
+			setThemeInRegistry(Theme.DARK);
+			FlatDarculaLaf.install();
+		} else if (theme == Theme.LIGHT) {
+			FlatIntelliJLaf.install();
+		} else {
+			FlatDarculaLaf.install();
+		}
+		
+		editor = new HWFEditor();
 		editor.initComponents();
 		final InputStream logo = editor.getClass().getResourceAsStream("/logo.png");
 		frame.setIconImage(ImageIO.read(logo));
 		frame.setContentPane(editor);
-		frame.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
+		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
 		frame.setSize(screenSize.width / 2, screenSize.height / 2);
 		frame.setLocationRelativeTo(null);
@@ -94,18 +186,45 @@ public class HWFEditor extends JPanel {
 		frame.addWindowListener(new WindowAdapter() {
 			@Override
 			public void windowClosing(WindowEvent e) {
-				promptExit();
+				editor.promptExit();
 			}
 		});
 	}
 	
-	private static void promptExit() {
-		if (changeAndHaventSaved) {
+	static int byteArrayToInt(byte[] bytes) {
+		return ByteBuffer.wrap(bytes).order(java.nio.ByteOrder.LITTLE_ENDIAN).getInt();
+	}
+	
+	public static <T, E> T getKeyByValue(Map<T, E> map, E value) {
+		return map.entrySet().stream().filter(entry -> Objects.equals(value, entry.getValue())).findFirst().map(Map.Entry::getKey).orElse(null);
+	}
+	
+	public static String readableFileSize(long size) {
+		if (size <= 0) return "0";
+		final String[] units = new String[] {"B", "kB", "MB", "GB", "TB"};
+		int digitGroups = (int) (Math.log10(size) / Math.log10(1024));
+		return new DecimalFormat("#,##0.#").format(size / Math.pow(1024, digitGroups)) + " " + units[digitGroups];
+	}
+	
+	public void saveHWF() {
+		frame.setCursor(new Cursor(Cursor.WAIT_CURSOR));
+		try {
+			writeHWFToFile(assets, currentHWFFile);
+			unsavedChanges = false;
+		} catch (Exception exception) {
+			JOptionPane.showMessageDialog(frame, new JScrollPane(new JTextArea("There was an error saving.\n\n" + exception.toString())), "Save error", JOptionPane.ERROR_MESSAGE);
+		} finally {
+			frame.setCursor(new Cursor(Cursor.DEFAULT_CURSOR));
+		}
+	}
+	
+	public void promptExit() {
+		if (unsavedChanges) {
 			int i = JOptionPane.showConfirmDialog(new JFrame(),
 					"Do you want to save changes?", "HWFEditor",
 					JOptionPane.YES_NO_CANCEL_OPTION);
 			if (i == JOptionPane.YES_OPTION) {
-				writeHWF();
+				saveHWF();
 				System.exit(0);
 			} else if (i == JOptionPane.NO_OPTION) {
 				System.exit(0);
@@ -115,35 +234,53 @@ public class HWFEditor extends JPanel {
 		}
 	}
 	
-	static int byteArrayToInt(byte[] bytes) {
-		return ByteBuffer.wrap(bytes).order(java.nio.ByteOrder.LITTLE_ENDIAN).getInt();
-	}
-	
-	static class IllformattedHWFFile extends IOException {
-		public IllformattedHWFFile() {
-			super();
-		}
-		public IllformattedHWFFile(String message, long pos) {
-			super(message + " at position " + pos + ".");
-		}
-	}
-	
+	/**
+	 * @param HWF the file to parse
+	 * @throws IOException if an error occurs
+	 */
 	public void betterParseHWF(File HWF) throws IOException {
-		RandomAccessFile file = new RandomAccessFile(HWF,"r");
+		
+		RandomAccessFile file = new RandomAccessFile(HWF, "r");
+		ArrayList<Integer> fileSizes = new ArrayList<>();
+		
 		long size = file.length();
-		file.seek(size - 1);
-		System.out.println(file.read());
-		// STOPSHIP: 7/13/2020
+		file.seek(size - 4);
+		
+		// Check EOF
+		int eof = Integer.reverseBytes(file.readInt());
+		if (eof != 392) {
+			throw new IllformattedHWFFile("Illegal EOF", file.getFilePointer());
+		}
+		file.seek(file.getFilePointer() - 8);
+		
+		// For each file, get file lengths
+		int numFiles = MIDIJam.FILENAMES_IDS.size();
+		for (int i = 0; i < numFiles; i++) {
+			int i1 = file.readInt();
+			fileSizes.add(Integer.reverseBytes(i1));
+			file.seek(file.getFilePointer() - 268);
+		}
+		Collections.reverse(fileSizes);
+		// Read each file
+		file.seek(0);
+		byte[][] readAssets = new byte[numFiles][];
+		for (int i = 0; i < numFiles; i++) {
+			int fileSize = fileSizes.get(i);
+			byte[] arr = new byte[fileSize];
+			file.read(arr, 0, fileSize);
+			readAssets[i] = arr;
+		}
+		assets = readAssets;
 	}
 	
 	/**
-	 * @deprecated superseded by {@code betterParseHWF}
-	 * @param hwf the file to parse
+	 * @param HWF the file to parse
 	 * @throws IOException if an error occurs
+	 * @deprecated superseded by {@code betterParseHWF}
 	 */
-	private void parseHWF(File hwf) throws IOException {
+	public void parseHWF(File HWF) throws IOException {
 		byte[] bytes;
-		bytes = Files.readAllBytes(hwf.toPath());
+		bytes = Files.readAllBytes(HWF.toPath());
 		ArrayList<Integer> listOfLengths = new ArrayList<>();
 		for (int i = bytes.length - 8; i > bytes.length - 8 - (392 * 264); i -= 264) {
 			byte[] sizeBytes = new byte[4];
@@ -164,7 +301,7 @@ public class HWFEditor extends JPanel {
 		
 	}
 	
-	private ArrayList<ImageIcon> textures() {
+	public ArrayList<ImageIcon> textures() {
 		ArrayList<ImageIcon> images = new ArrayList<>();
 		try {
 			for (int i = 280; i < 392; i++) {
@@ -180,7 +317,7 @@ public class HWFEditor extends JPanel {
 		}
 	}
 	
-	private String[][] texturesRows() {
+	public String[][] texturesRows() {
 		String[][] strings = new String[112][];
 		for (int i = 280; i <= 391; i++) {
 			strings[i - 280] = new String[] {MIDIJam.FILENAMES_IDS.get(i), "", ""};
@@ -188,7 +325,7 @@ public class HWFEditor extends JPanel {
 		return strings;
 	}
 	
-	private String[][] modelsRows() {
+	public String[][] modelsRows() {
 		String[][] strings = new String[280][];
 		for (int i = 0; i <= 279; i++) {
 			strings[i] = new String[] {MIDIJam.FILENAMES_IDS.get(i), ""};
@@ -196,41 +333,44 @@ public class HWFEditor extends JPanel {
 		return strings;
 	}
 	
-	
-	private void loadHWF(File file) {
-		frame.setCursor(new Cursor(Cursor.WAIT_CURSOR));
-		if (currentHWFFile != null) {
-			closeMenuITemActionPerformed(null);
-		}
-		currentHWFFile = file;
+	public void loadHWF(File file) {
 		try {
+			frame.setCursor(new Cursor(Cursor.WAIT_CURSOR));
+			if (currentHWFFile != null) {
+				closeMenuITemActionPerformed(null);
+			}
+			currentHWFFile = file;
+			
 			betterParseHWF(file);
+			
+			
+			this.noFileLabel.setVisible(false);
+			this.noFileLabel2.setVisible(false);
+			
+			loadTexturesTable();
+			loadModelsTable();
+			unsavedChanges = false;
+			
+			this.importMenuItem.setEnabled(true);
+			this.exportMenuItem.setEnabled(true);
+			this.saveMenuItem.setEnabled(true);
+			this.saveAsMenuItem.setEnabled(true);
+			this.closeMenuITem.setEnabled(true);
+			frame.setCursor(new Cursor(Cursor.DEFAULT_CURSOR));
 		} catch (Exception exception) {
 			JOptionPane.showMessageDialog(frame, new JScrollPane(new JTextArea("There was an error parsing the HWF file.\n\n" + exception.toString())), "HWF Parse error", JOptionPane.ERROR_MESSAGE);
-			frame.setCursor(new Cursor(Cursor.DEFAULT_CURSOR));
 			currentHWFFile = null;
-			return;
+			exception.printStackTrace();
+		} finally {
+			frame.setCursor(new Cursor(Cursor.DEFAULT_CURSOR));
 		}
-		this.noFileLabel.setVisible(false);
-		this.noFileLabel2.setVisible(false);
-		
-		loadTexturesTable();
-		loadModelsTable();
-		changeAndHaventSaved = false;
-		
-		this.importMenuItem.setEnabled(true);
-		this.exportMenuItem.setEnabled(true);
-		this.saveMenuItem.setEnabled(true);
-		this.saveAsMenuItem.setEnabled(true);
-		this.closeMenuITem.setEnabled(true);
-		frame.setCursor(new Cursor(Cursor.DEFAULT_CURSOR));
 	}
 	
-	private void loadModelsTable() {
+	public void loadModelsTable() {
 		final String[] colNames = new String[] {"Name", "Size"};
 		String[][] data = modelsRows();
 		for (int i = 0; i < 280; i++) {
-			data[i][1] = String.valueOf(assets[i].length);
+			data[i][1] = readableFileSize(assets[i].length);
 		}
 		DefaultTableModel model = new DefaultTableModel(data, colNames) {
 			@Override
@@ -244,7 +384,7 @@ public class HWFEditor extends JPanel {
 		modelsTable.setVisible(true);
 	}
 	
-	private void loadTexturesTable() {
+	public void loadTexturesTable() {
 		
 		final String[] colNames = new String[] {"Name", "Size", "Texture"};
 		String[][] data = texturesRows();
@@ -254,7 +394,7 @@ public class HWFEditor extends JPanel {
 			try {
 				assert images != null;
 				ImageIO.write((RenderedImage) images.get(i).getImage(), "bmp", bos);
-				data[i][1] = String.valueOf(bos.toByteArray().length);
+				data[i][1] = readableFileSize(bos.toByteArray().length);
 			} catch (IOException e) {
 				JOptionPane.showMessageDialog(frame, new JScrollPane(new JTextArea("There was an error creating the textures table.\n\n" + e.toString())), "Texture table error", JOptionPane.ERROR_MESSAGE);
 				e.printStackTrace();
@@ -282,7 +422,7 @@ public class HWFEditor extends JPanel {
 		texturesTable.setVisible(true);
 	}
 	
-	private ImageIcon rescale(ImageIcon srcImg, int w, int h) {
+	public ImageIcon rescale(ImageIcon srcImg, int w, int h) {
 		BufferedImage resizedImg = new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB);
 		Graphics2D g2 = resizedImg.createGraphics();
 		
@@ -293,21 +433,7 @@ public class HWFEditor extends JPanel {
 		return new ImageIcon(resizedImg);
 	}
 	
-	static final FileFilter HWFFileFilter = new FileFilter() {
-		@Override
-		public boolean accept(File f) {
-			if (f.isDirectory()) return true;
-			else
-				return f.getName().toLowerCase().endsWith("hwf");
-		}
-		
-		@Override
-		public String getDescription() {
-			return "HWF Asset Files (*.hwf)";
-		}
-	};
-	
-	private void openMenuItemActionPerformed(ActionEvent e) {
+	public void openMenuItemActionPerformed(ActionEvent e) {
 		Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
 		final JFileChooser chooser = new JFileChooser();
 		chooser.setSize(screenSize);
@@ -321,7 +447,7 @@ public class HWFEditor extends JPanel {
 		}
 	}
 	
-	private void importMenuItemActionPerformed(ActionEvent e) {
+	public void importMenuItemActionPerformed(ActionEvent e) {
 		try {
 			JFileChooser chooser = new JFileChooser();
 			chooser.addChoosableFileFilter(new FileFilter() {
@@ -352,7 +478,7 @@ public class HWFEditor extends JPanel {
 					ImageIcon icon = null;
 					final byte[] fileHeader = Arrays.copyOfRange(bytes, 0, 4);
 					boolean bitmap = false;
-					if (Arrays.equals(Arrays.copyOfRange(fileHeader, 0, 3), new byte[] {0x42, 0x4D, 0x36})) { // BM6
+					if (Arrays.equals(Arrays.copyOfRange(fileHeader, 0, 2), new byte[] {0x42, 0x4D})) { // BM6
 						try {
 							icon = new ImageIcon(ImageIO.read(new ByteArrayInputStream(bytes)));
 							bitmap = true;
@@ -394,13 +520,12 @@ public class HWFEditor extends JPanel {
 						break;
 					}
 					assets[resID] = bytes;
-					changeAndHaventSaved = true;
+					unsavedChanges = true;
 					count++;
 				}
 				
 				loadTexturesTable();
 				loadModelsTable();
-				System.out.println("done loop");
 				frame.setCursor(new Cursor(Cursor.DEFAULT_CURSOR));
 				JOptionPane.showMessageDialog(this, count + " asset" + (count == 1 ? "" : "s") + " imported.",
 						"Assets imported",
@@ -414,24 +539,15 @@ public class HWFEditor extends JPanel {
 		
 	}
 	
-	public static <T, E> T getKeyByValue(Map<T, E> map, E value) {
-		for (Map.Entry<T, E> entry : map.entrySet()) {
-			if (Objects.equals(value, entry.getValue())) {
-				return entry.getKey();
-			}
-		}
-		return null;
-	}
-	
-	private void exitMenuItemActionPerformed(ActionEvent e) {
+	public void exitMenuItemActionPerformed(ActionEvent e) {
 		promptExit();
 	}
 	
-	private void saveMenuItemActionPerformed(ActionEvent e) {
-		writeHWF();
+	public void saveMenuItemActionPerformed(ActionEvent e) {
+		saveHWF();
 	}
 	
-	private void saveAsMenuItemActionPerformed(ActionEvent e) {
+	public void saveAsMenuItemActionPerformed(ActionEvent e) {
 		JFileChooser chooser = new JFileChooser();
 		chooser.setDialogTitle("Save as...");
 		chooser.addChoosableFileFilter(HWFFileFilter);
@@ -446,13 +562,12 @@ public class HWFEditor extends JPanel {
 				fileToSave = new File(fileToSave.getAbsolutePath() + ".hwf");
 			}
 			currentHWFFile = fileToSave;
-			writeHWF();
-			
+			saveHWF();
 		}
 	}
 	
-	private void closeMenuITemActionPerformed(ActionEvent e) {
-		if (changeAndHaventSaved) {
+	public void closeMenuITemActionPerformed(ActionEvent e) {
+		if (unsavedChanges) {
 			int i = JOptionPane.showConfirmDialog(new JFrame(),
 					"Do you want to save changes?", "HWFEditor",
 					JOptionPane.YES_NO_CANCEL_OPTION);
@@ -460,7 +575,7 @@ public class HWFEditor extends JPanel {
 				return;
 			}
 			if (i == JOptionPane.YES_OPTION) {
-				writeHWF();
+				saveHWF();
 			}
 		}
 		currentHWFFile = null;
@@ -477,9 +592,7 @@ public class HWFEditor extends JPanel {
 		closeMenuITem.setEnabled(false);
 	}
 	
-	static final JDialog exportDialog = new JDialog(frame, true);
-	
-	private void exportMenuItemActionPerformed(ActionEvent e) {
+	public void exportMenuItemActionPerformed(ActionEvent e) {
 		
 		exportDialog.setContentPane(new Exporter());
 		Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
@@ -488,7 +601,7 @@ public class HWFEditor extends JPanel {
 		exportDialog.setVisible(true);
 	}
 	
-	private void aboutMenuItemActionPerformed(ActionEvent e) {
+	public void aboutMenuItemActionPerformed(ActionEvent e) {
 		JDialog dialog = new JDialog(frame, true);
 		dialog.setTitle("About HWFEditor");
 		dialog.setContentPane(new About());
@@ -498,13 +611,31 @@ public class HWFEditor extends JPanel {
 		dialog.setVisible(true);
 	}
 	
-	private void helpMenuItemActionPerformed(ActionEvent e) {
+	public void helpMenuItemActionPerformed(ActionEvent e) {
 		JFrame helpFrame = new JFrame("Help");
 		helpFrame.setIconImage(frame.getIconImage());
 		helpFrame.setSize(500, 500);
 		helpFrame.setContentPane(new HelpScreen());
 		helpFrame.setLocationRelativeTo(null);
 		helpFrame.setVisible(true);
+	}
+	
+	private void preferencesMenuItemActionPerformed(ActionEvent e) {
+		Preferences preferences = new Preferences();
+		preferences.setIconImage(frame.getIconImage());
+		preferences.setLocationRelativeTo(null);
+		preferences.setModal(true);
+		preferences.setVisible(true);
+	}
+	
+	static class IllformattedHWFFile extends IOException {
+		public IllformattedHWFFile() {
+			super();
+		}
+		
+		public IllformattedHWFFile(String message, long pos) {
+			super(message + " at position " + pos + ".");
+		}
 	}
 	
 	private void initComponents() {
@@ -518,6 +649,8 @@ public class HWFEditor extends JPanel {
 		saveAsMenuItem = new MenuItemResizedIcon();
 		closeMenuITem = new MenuItemResizedIcon();
 		exitMenuItem = new MenuItemResizedIcon();
+		editMenu = new JMenu();
+		preferencesMenuItem = new MenuItemResizedIcon();
 		helpMenu = new JMenu();
 		helpMenuItem = new MenuItemResizedIcon();
 		aboutMenuItem = new MenuItemResizedIcon();
@@ -532,6 +665,7 @@ public class HWFEditor extends JPanel {
 		modelsTable = new JTable();
 		
 		//======== this ========
+
 		setLayout(new BorderLayout());
 		
 		//======== menuBar ========
@@ -599,6 +733,18 @@ public class HWFEditor extends JPanel {
 				fileMenu.add(exitMenuItem);
 			}
 			menuBar.add(fileMenu);
+			
+			//======== editMenu ========
+			{
+				editMenu.setText("Edit");
+				
+				//---- preferencesMenuItem ----
+				preferencesMenuItem.setText("Preferences...");
+				preferencesMenuItem.setIcon(new ImageIcon(getClass().getResource("/preferences.png")));
+				preferencesMenuItem.addActionListener(e -> preferencesMenuItemActionPerformed(e));
+				editMenu.add(preferencesMenuItem);
+			}
+			menuBar.add(editMenu);
 			
 			//======== helpMenu ========
 			{
@@ -671,6 +817,8 @@ public class HWFEditor extends JPanel {
 	private MenuItemResizedIcon saveAsMenuItem;
 	private MenuItemResizedIcon closeMenuITem;
 	private MenuItemResizedIcon exitMenuItem;
+	private JMenu editMenu;
+	private MenuItemResizedIcon preferencesMenuItem;
 	private JMenu helpMenu;
 	private MenuItemResizedIcon helpMenuItem;
 	private MenuItemResizedIcon aboutMenuItem;

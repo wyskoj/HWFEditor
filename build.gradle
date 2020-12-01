@@ -3,7 +3,7 @@ plugins {
 }
 
 group 'org.wysko'
-version '1.1'
+version '1.2-SNAPSHOT'
 
 repositories {
     mavenCentral()
@@ -15,8 +15,9 @@ dependencies {
     compile group: 'org.apache.commons', name: 'commons-lang3', version: '3.10'
     implementation 'com.formdev:flatlaf:0.35'
     implementation("com.google.guava:guava:29.0-jre")
-    // https://mvnrepository.com/artifact/org.apache.commons/commons-lang3
-    compile group: 'org.apache.commons', name: 'commons-lang3', version: '3.10'
+    // https://mvnrepository.com/artifact/commons-io/commons-io
+    compile group: 'commons-io', name: 'commons-io', version: '2.7'
+    implementation 'me.tongfei:progressbar:0.8.1'
 
 }
 
