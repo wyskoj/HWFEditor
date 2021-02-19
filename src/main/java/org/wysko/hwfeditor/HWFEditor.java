@@ -4,9 +4,7 @@
 
 package org.wysko.hwfeditor;
 
-
 import com.formdev.flatlaf.FlatDarculaLaf;
-import com.formdev.flatlaf.FlatIntelliJLaf;
 
 import javax.imageio.ImageIO;
 import javax.swing.*;
@@ -19,19 +17,13 @@ import java.awt.event.WindowEvent;
 import java.awt.image.BufferedImage;
 import java.awt.image.RenderedImage;
 import java.io.*;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.file.Files;
 import java.util.*;
 
-/*
- * Created by JFormDesigner on Mon May 18 23:39:32 EDT 2020
- */
-
-
-/**
- * @author unknown
- */
 public class HWFEditor extends JPanel {
 	
 	static File currentHWFFile = null;
@@ -39,48 +31,44 @@ public class HWFEditor extends JPanel {
 	static boolean changeAndHaventSaved = false;
 	static final JFrame frame = new JFrame("HWFEditor");
 	
-	private static void writeHWF() {
+	private static void attemptWrite() {
 		frame.setCursor(new Cursor(Cursor.WAIT_CURSOR));
 		try {
-			Files.write(currentHWFFile.toPath(), buildHWFFile(assets));
+			writeHWFFile(currentHWFFile);
 			changeAndHaventSaved = false;
 		} catch (Exception exception) {
 			frame.setCursor(new Cursor(Cursor.DEFAULT_CURSOR));
-			JOptionPane.showMessageDialog(frame, new JScrollPane(new JTextArea("There was an error saving.\n\n" + exception.toString())), "Save error", JOptionPane.ERROR_MESSAGE);
+			JOptionPane.showMessageDialog(frame, new JScrollPane(new JTextArea("There was an error saving" +
+					".\n\n" + exceptionToLines(exception))), "Save error", JOptionPane.ERROR_MESSAGE);
+		} finally {
+			frame.setCursor(new Cursor(Cursor.DEFAULT_CURSOR));
 		}
-		frame.setCursor(new Cursor(Cursor.DEFAULT_CURSOR));
 	}
 	
-	static byte[] buildHWFFile(byte[][] modelsAndTextures) {
-		ArrayList<Byte> buildingBytes = new ArrayList<>();
-		
-		for (byte[] modelOrTexture : modelsAndTextures)
-			for (byte aByte : modelOrTexture) buildingBytes.add(aByte);
-		
+	static void writeHWFFile(File file) throws IOException {
+		FileOutputStream s = new FileOutputStream(file);
+		for (byte[] modelOrTexture : assets) {
+			s.write(modelOrTexture);
+		}
 		for (int i = 0; i < MIDIJam.FILENAMES_IDS.entrySet().size(); i++) {
 			String filename = MIDIJam.FILENAMES_IDS.get(i);
 			for (int j = 0; j < filename.length(); j++) {
-				buildingBytes.add((byte) filename.charAt(j));
+				s.write((byte) filename.charAt(j));
 			}
-			buildingBytes.add((byte) 0x0);
+			s.write((byte) 0x0);
 			for (int j = 0; j < 260 - (filename.length() + 1); j++) {
-				buildingBytes.add((byte) 0x0);
+				s.write((byte) 0x0);
 			}
-			byte[] fileLengthAsArray = ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putInt(modelsAndTextures[i].length).array();
+			byte[] fileLengthAsArray =
+					ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putInt(assets[i].length).array();
 			for (int j = 0; j < 4; j++) {
-				buildingBytes.add(fileLengthAsArray[j]);
+				s.write(fileLengthAsArray[j]);
 			}
 		}
-		buildingBytes.add((byte) 0x88);
-		buildingBytes.add((byte) 0x01);
-		buildingBytes.add((byte) 0x00);
-		buildingBytes.add((byte) 0x00);
-		
-		byte[] finalArray = new byte[buildingBytes.size()];
-		for (int i = 0; i < buildingBytes.size(); i++) {
-			finalArray[i] = buildingBytes.get(i);
-		}
-		return finalArray;
+		s.write((byte) 0x88);
+		s.write((byte) 0x01);
+		s.write((byte) 0x00);
+		s.write((byte) 0x00);
 	}
 	
 	public static void main(String[] args) throws IOException {
@@ -96,7 +84,7 @@ public class HWFEditor extends JPanel {
 		frame.setIconImage(ImageIO.read(logo));
 		
 		frame.setContentPane(editor);
-		frame.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
+		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
 		frame.setSize(screenSize.width / 2, screenSize.height / 2);
 		frame.setLocationRelativeTo(null);
@@ -115,7 +103,7 @@ public class HWFEditor extends JPanel {
 					"Do you want to save changes?", "HWFEditor",
 					JOptionPane.YES_NO_CANCEL_OPTION);
 			if (i == JOptionPane.YES_OPTION) {
-				writeHWF();
+				attemptWrite();
 				System.exit(0);
 			} else if (i == JOptionPane.NO_OPTION) {
 				System.exit(0);
@@ -135,27 +123,29 @@ public class HWFEditor extends JPanel {
 		}
 	}
 	
-	private void parseHWF(File hwf) throws IOException {
-		byte[] bytes;
-		bytes = Files.readAllBytes(hwf.toPath());
+	private void betterParseHWF(File file) throws IOException {
+		RandomAccessFile raf = new RandomAccessFile(file,"r");
 		ArrayList<Integer> listOfLengths = new ArrayList<>();
-		for (int i = bytes.length - 8; i > bytes.length - 8 - (392 * 264); i -= 264) {
+		long fileSize = raf.length();
+		for (long i = fileSize - 8; i > fileSize - 8 - (392 * 264); i -= 264) {
 			byte[] sizeBytes = new byte[4];
-			System.arraycopy(bytes, i, sizeBytes, 0, 4);
+			raf.seek(i);
+			raf.read(sizeBytes);
 			listOfLengths.add(byteArrayToInt(sizeBytes));
 		}
 		Collections.reverse(listOfLengths);
 		byte[][] texturesAndModels = new byte[392][];
 		int srcPos = 0;
 		for (int i = 0; i < texturesAndModels.length; i++) {
-			texturesAndModels[i] = Arrays.copyOfRange(bytes, srcPos, srcPos + listOfLengths.get(i));
+			raf.seek(srcPos);
+			texturesAndModels[i] = new byte[listOfLengths.get(i)];
+			raf.read(texturesAndModels[i]);
 			srcPos += listOfLengths.get(i);
 		}
-		if (bytes.length != listOfLengths.stream().mapToInt(Integer::intValue).sum() + (listOfLengths.size() * 264) + 4) {
+		if (fileSize != listOfLengths.stream().mapToInt(Integer::intValue).sum() + (listOfLengths.size() * 264L) + 4) {
 			throw new IllformattedHWFFile();
 		}
 		assets = texturesAndModels;
-		
 	}
 	
 	private ArrayList<ImageIcon> textures() {
@@ -167,7 +157,8 @@ public class HWFEditor extends JPanel {
 			return images;
 		} catch (Exception e) {
 			System.out.println("showing dialog");
-			JOptionPane.showMessageDialog(this, new JScrollPane(new JTextArea("There was an error reading a texture.\n\n" + e.toString())), "Texture error", JOptionPane.ERROR_MESSAGE);
+			JOptionPane.showMessageDialog(frame, new JScrollPane(new JTextArea("There was an error reading a texture" +
+					".\n\n" + exceptionToLines(e))), "Texture error", JOptionPane.ERROR_MESSAGE);
 			e.printStackTrace();
 			frame.setCursor(new Cursor(Cursor.DEFAULT_CURSOR));
 			return null;
@@ -190,6 +181,14 @@ public class HWFEditor extends JPanel {
 		return strings;
 	}
 	
+	static String exceptionToLines(Exception e) {
+		StringBuilder b = new StringBuilder();
+		for (StackTraceElement element : e.getStackTrace()) {
+			b.append(element.toString()).append("\n");
+		}
+		return b.toString();
+	}
+	
 	
 	private void loadHWF(File file) {
 		frame.setCursor(new Cursor(Cursor.WAIT_CURSOR));
@@ -198,9 +197,10 @@ public class HWFEditor extends JPanel {
 		}
 		currentHWFFile = file;
 		try {
-			parseHWF(file);
+			betterParseHWF(file);
 		} catch (Exception exception) {
-			JOptionPane.showMessageDialog(frame, new JScrollPane(new JTextArea("There was an error parsing the HWF file.\n\n" + exception.toString())), "HWF Parse error", JOptionPane.ERROR_MESSAGE);
+			JOptionPane.showMessageDialog(frame, new JScrollPane(new JTextArea("There was an error parsing the HWF " +
+					"file.\n\n" + exceptionToLines(exception))), "HWF Parse error", JOptionPane.ERROR_MESSAGE);
 			frame.setCursor(new Cursor(Cursor.DEFAULT_CURSOR));
 			currentHWFFile = null;
 			return;
@@ -250,7 +250,9 @@ public class HWFEditor extends JPanel {
 				ImageIO.write((RenderedImage) images.get(i).getImage(), "bmp", bos);
 				data[i][1] = String.valueOf(bos.toByteArray().length);
 			} catch (IOException e) {
-				JOptionPane.showMessageDialog(frame, new JScrollPane(new JTextArea("There was an error creating the textures table.\n\n" + e.toString())), "Texture table error", JOptionPane.ERROR_MESSAGE);
+				JOptionPane.showMessageDialog(frame, new JScrollPane(new JTextArea("There was an error creating the " +
+						"textures table" +
+						".\n\n" + exceptionToLines(e))), "Texture table error", JOptionPane.ERROR_MESSAGE);
 				e.printStackTrace();
 			}
 			
@@ -346,20 +348,23 @@ public class HWFEditor extends JPanel {
 					ImageIcon icon = null;
 					final byte[] fileHeader = Arrays.copyOfRange(bytes, 0, 4);
 					boolean bitmap = false;
-					if (Arrays.equals(Arrays.copyOfRange(fileHeader, 0, 3), new byte[] {0x42, 0x4D, 0x36})) { // BM6
+					if (Arrays.equals(Arrays.copyOfRange(fileHeader, 0, 2), new byte[] {0x42, 0x4D})) { // BM
 						try {
 							icon = new ImageIcon(ImageIO.read(new ByteArrayInputStream(bytes)));
 							bitmap = true;
 						} catch (IOException e1) {
 							JOptionPane.showMessageDialog(this,
-									"Could not read " + name + ". It appears to be broken!", "Error"
+									String.format("Could not read the bitmap %s. It appears to be broken or the wrong" +
+													" type!",
+											name),
+									"Error"
 									, JOptionPane.ERROR_MESSAGE
 							);
 							break;
 						}
 					} else if (!Arrays.equals(fileHeader, new byte[] {0x4D, 0x53, 0x33, 0x44})) { // not MS3D
 						JOptionPane.showMessageDialog(this,
-								"Could not read " + name + ". Unknown type!", "Error"
+								String.format("Could not read %s. Unknown type!", name), "Error"
 								, JOptionPane.ERROR_MESSAGE
 						);
 						break;
@@ -394,7 +399,6 @@ public class HWFEditor extends JPanel {
 				
 				loadTexturesTable();
 				loadModelsTable();
-				System.out.println("done loop");
 				frame.setCursor(new Cursor(Cursor.DEFAULT_CURSOR));
 				JOptionPane.showMessageDialog(this, count + " asset" + (count == 1 ? "" : "s") + " imported.",
 						"Assets imported",
@@ -402,7 +406,8 @@ public class HWFEditor extends JPanel {
 						null);
 			}
 		} catch (Exception ex) {
-			JOptionPane.showMessageDialog(frame, new JScrollPane(new JTextArea("There was an error importing asset(s).\n\n" + ex.toString())), "Import error", JOptionPane.ERROR_MESSAGE);
+			JOptionPane.showMessageDialog(frame, new JScrollPane(new JTextArea("There was an error importing assets" +
+					".\n\n" + exceptionToLines(ex))), "Import error", JOptionPane.ERROR_MESSAGE);
 			ex.printStackTrace();
 		}
 		
@@ -422,7 +427,7 @@ public class HWFEditor extends JPanel {
 	}
 	
 	private void saveMenuItemActionPerformed(ActionEvent e) {
-		writeHWF();
+		attemptWrite();
 	}
 	
 	private void saveAsMenuItemActionPerformed(ActionEvent e) {
@@ -440,7 +445,7 @@ public class HWFEditor extends JPanel {
 				fileToSave = new File(fileToSave.getAbsolutePath() + ".hwf");
 			}
 			currentHWFFile = fileToSave;
-			writeHWF();
+			attemptWrite();
 			
 		}
 	}
@@ -454,7 +459,7 @@ public class HWFEditor extends JPanel {
 				return;
 			}
 			if (i == JOptionPane.YES_OPTION) {
-				writeHWF();
+				attemptWrite();
 			}
 		}
 		currentHWFFile = null;
@@ -486,19 +491,20 @@ public class HWFEditor extends JPanel {
 		JDialog dialog = new JDialog(frame, true);
 		dialog.setTitle("About HWFEditor");
 		dialog.setContentPane(new About());
-		dialog.setSize(255, 400);
+		dialog.setSize(300, 400);
 		dialog.setResizable(false);
 		dialog.setLocationRelativeTo(null);
 		dialog.setVisible(true);
 	}
 	
 	private void helpMenuItemActionPerformed(ActionEvent e) {
-		JFrame helpFrame = new JFrame("Help");
-		helpFrame.setIconImage(frame.getIconImage());
-		helpFrame.setSize(500, 500);
-		helpFrame.setContentPane(new HelpScreen());
-		helpFrame.setLocationRelativeTo(null);
-		helpFrame.setVisible(true);
+		if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
+			try {
+				Desktop.getDesktop().browse(new URI("https://github.com/wyskoj/HWFEditor/blob/master/README.md#hwfeditor"));
+			} catch (IOException | URISyntaxException ioException) {
+				ioException.printStackTrace();
+			}
+		}
 	}
 	
 	private void initComponents() {
@@ -524,17 +530,17 @@ public class HWFEditor extends JPanel {
 		noFileLabel2 = new JLabel();
 		scrollPane2 = new JScrollPane();
 		modelsTable = new JTable();
-
+		
 		//======== this ========
 		setLayout(new BorderLayout());
-
+		
 		//======== menuBar ========
 		{
-
+			
 			//======== fileMenu ========
 			{
 				fileMenu.setText("File");
-
+				
 				//---- openMenuItem ----
 				openMenuItem.setText("Open...");
 				openMenuItem.setIcon(new ImageIcon(getClass().getResource("/open.png")));
@@ -542,7 +548,7 @@ public class HWFEditor extends JPanel {
 				openMenuItem.addActionListener(e -> openMenuItemActionPerformed(e));
 				fileMenu.add(openMenuItem);
 				fileMenu.addSeparator();
-
+				
 				//---- importMenuItem ----
 				importMenuItem.setText("Import...");
 				importMenuItem.setIcon(new ImageIcon(getClass().getResource("/import.png")));
@@ -550,7 +556,7 @@ public class HWFEditor extends JPanel {
 				importMenuItem.setMnemonic('I');
 				importMenuItem.addActionListener(e -> importMenuItemActionPerformed(e));
 				fileMenu.add(importMenuItem);
-
+				
 				//---- exportMenuItem ----
 				exportMenuItem.setText("Export...");
 				exportMenuItem.setEnabled(false);
@@ -559,7 +565,7 @@ public class HWFEditor extends JPanel {
 				exportMenuItem.addActionListener(e -> exportMenuItemActionPerformed(e));
 				fileMenu.add(exportMenuItem);
 				fileMenu.addSeparator();
-
+				
 				//---- saveMenuItem ----
 				saveMenuItem.setText("Save");
 				saveMenuItem.setIcon(new ImageIcon(getClass().getResource("/save.png")));
@@ -567,7 +573,7 @@ public class HWFEditor extends JPanel {
 				saveMenuItem.setMnemonic('S');
 				saveMenuItem.addActionListener(e -> saveMenuItemActionPerformed(e));
 				fileMenu.add(saveMenuItem);
-
+				
 				//---- saveAsMenuItem ----
 				saveAsMenuItem.setText("Save as...");
 				saveAsMenuItem.setIcon(new ImageIcon(getClass().getResource("/saveas.png")));
@@ -575,7 +581,7 @@ public class HWFEditor extends JPanel {
 				saveAsMenuItem.setMnemonic('S');
 				saveAsMenuItem.addActionListener(e -> saveAsMenuItemActionPerformed(e));
 				fileMenu.add(saveAsMenuItem);
-
+				
 				//---- closeMenuITem ----
 				closeMenuITem.setText("Close");
 				closeMenuITem.setIcon(new ImageIcon(getClass().getResource("/close.png")));
@@ -584,7 +590,7 @@ public class HWFEditor extends JPanel {
 				closeMenuITem.addActionListener(e -> closeMenuITemActionPerformed(e));
 				fileMenu.add(closeMenuITem);
 				fileMenu.addSeparator();
-
+				
 				//---- exitMenuItem ----
 				exitMenuItem.setText("Exit");
 				exitMenuItem.setIcon(new ImageIcon(getClass().getResource("/exit.png")));
@@ -593,17 +599,17 @@ public class HWFEditor extends JPanel {
 				fileMenu.add(exitMenuItem);
 			}
 			menuBar.add(fileMenu);
-
+			
 			//======== helpMenu ========
 			{
 				helpMenu.setText("Help");
-
+				
 				//---- helpMenuItem ----
 				helpMenuItem.setText("Help");
 				helpMenuItem.setIcon(new ImageIcon(getClass().getResource("/help.png")));
 				helpMenuItem.addActionListener(e -> helpMenuItemActionPerformed(e));
 				helpMenu.add(helpMenuItem);
-
+				
 				//---- aboutMenuItem ----
 				aboutMenuItem.setText("About");
 				aboutMenuItem.setIcon(new ImageIcon(getClass().getResource("/about.png")));
@@ -613,19 +619,19 @@ public class HWFEditor extends JPanel {
 			menuBar.add(helpMenu);
 		}
 		add(menuBar, BorderLayout.NORTH);
-
+		
 		//======== tabbedPane1 ========
 		{
-
+			
 			//======== texturesPanel ========
 			{
 				texturesPanel.setLayout(new BorderLayout());
-
+				
 				//---- noFileLabel ----
 				noFileLabel.setText("No file loaded.");
 				noFileLabel.setHorizontalAlignment(SwingConstants.CENTER);
 				texturesPanel.add(noFileLabel, BorderLayout.NORTH);
-
+				
 				//======== scrollPane1 ========
 				{
 					scrollPane1.setViewportView(texturesTable);
@@ -633,16 +639,16 @@ public class HWFEditor extends JPanel {
 				texturesPanel.add(scrollPane1, BorderLayout.CENTER);
 			}
 			tabbedPane1.addTab("Textures", texturesPanel);
-
+			
 			//======== panel2 ========
 			{
 				panel2.setLayout(new BorderLayout());
-
+				
 				//---- noFileLabel2 ----
 				noFileLabel2.setText("No file loaded.");
 				noFileLabel2.setHorizontalAlignment(SwingConstants.CENTER);
 				panel2.add(noFileLabel2, BorderLayout.NORTH);
-
+				
 				//======== scrollPane2 ========
 				{
 					scrollPane2.setViewportView(modelsTable);
